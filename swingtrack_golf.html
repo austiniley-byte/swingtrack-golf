@@ -1,0 +1,2032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SwingTrack • Golf</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --green-dark: #0a2f1f;
+            --green: #166534;
+            --green-light: #22c55e;
+            --gold: #eab308;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        .golf-bg {
+            background: linear-gradient(180deg, #0a2f1f 0%, #052e16 100%);
+        }
+
+        .section {
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .metric-card {
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        .nav-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        
+        .nav-btn.active {
+            color: #22c55e;
+            background-color: #052e16;
+        }
+
+        .golf-gradient {
+            background: linear-gradient(135deg, #166534, #052e16);
+        }
+
+        .metric-value {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .swing-gauge {
+            width: 100%;
+            height: 8px;
+            background: #052e16;
+            border-radius: 9999px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .swing-gauge-fill {
+            height: 100%;
+            background: linear-gradient(to right, #22c55e, #eab308);
+            transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .club-face {
+            width: 120px;
+            height: 90px;
+            background: linear-gradient(#334155, #1e293b);
+            border: 3px solid #64748b;
+            border-radius: 8px;
+            position: relative;
+            box-shadow: 0 10px 10px -3px rgb(0 0 0 / 0.3);
+            overflow: hidden;
+        }
+        
+        .club-face::before {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 6px,
+                #475569 6px,
+                #475569 8px
+            );
+        }
+
+        .impact-dot {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: #ef4444;
+            border: 3px solid white;
+            border-radius: 9999px;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
+            cursor: grab;
+            z-index: 10;
+            transition: box-shadow 0.2s;
+        }
+        
+        .impact-dot:active {
+            cursor: grabbing;
+            box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.5);
+        }
+
+        .sweet-spot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            border: 2px dashed #22c55e;
+            border-radius: 9999px;
+            pointer-events: none;
+        }
+
+        .path-visual {
+            width: 100%;
+            height: 110px;
+            position: relative;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        .golf-ball {
+            width: 22px;
+            height: 22px;
+            background: radial-gradient(circle at 35% 35%, #f8fafc, #64748b 40%, #334155);
+            border-radius: 9999px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.3), 
+                       inset 6px 6px 8px rgba(255,255,255,0.6),
+                       inset -4px -4px 6px rgba(0,0,0,0.4);
+            position: relative;
+        }
+        
+        .golf-ball::after {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            background: radial-gradient(circle at 30% 30%, transparent 40%, rgba(51, 65, 85, 0.6) 70%);
+            border-radius: 9999px;
+        }
+
+        .range-canvas {
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+            background: #052e16;
+        }
+
+        .shot-result {
+            animation: shotPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .data-table {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .nav-icon {
+            transition: transform 0.2s ease;
+        }
+        
+        .nav-btn.active .nav-icon {
+            transform: scale(1.1);
+        }
+
+        .analysis-step {
+            transition: all 0.3s ease;
+        }
+
+        .stat-number {
+            font-feature-settings: "tnum";
+        }
+
+        /* Enhanced error handling banner */
+        .error-banner {
+            background: linear-gradient(135deg, #7f1d1d, #991b1b);
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-[#0a2f1f] text-white pb-20">
+    <!-- Top Header -->
+    <header class="sticky top-0 z-50 bg-[#0a2f1f]/95 backdrop-blur-lg border-b border-white/10">
+        <div class="max-w-screen-xl mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-x-3">
+                    <!-- Logo -->
+                    <div class="flex items-center gap-x-2">
+                        <div class="w-9 h-9 bg-[#22c55e] rounded-2xl flex items-center justify-center shadow-inner">
+                            <i class="fa-solid fa-golf-ball text-[#0a2f1f] text-3xl"></i>
+                        </div>
+                        <div>
+                            <span class="font-display text-2xl font-semibold tracking-tighter">SwingTrack</span>
+                        </div>
+                    </div>
+                    <div class="hidden sm:flex items-center px-3 py-1 bg-white/5 rounded-3xl text-xs font-medium tracking-widest">
+                        <div class="w-2 h-2 bg-[#22c55e] rounded-full animate-pulse mr-1.5"></div>
+                        BETA
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-x-2">
+                    <div class="flex items-center gap-x-2 bg-white/5 px-3 py-1.5 rounded-3xl">
+                        <div class="w-8 h-8 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-2xl overflow-hidden ring-2 ring-white/20">
+                            <img src="https://i.pravatar.cc/32?img=68" alt="Austin" class="w-full h-full object-cover">
+                        </div>
+                        <div class="hidden sm:block">
+                            <div class="text-sm font-semibold">Austin</div>
+                            <div class="text-[10px] text-white/50 -mt-0.5">Handicap ~18</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-screen-xl mx-auto px-4 pt-4 pb-4">
+        
+        <!-- HOME VIEW -->
+        <div id="view-home" class="section">
+            <div class="mb-6">
+                <h1 class="text-3xl font-semibold tracking-tighter">Good morning, Austin.</h1>
+                <p class="text-white/60 mt-1">Ready to groove your swing today?</p>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                <div class="bg-white/5 rounded-3xl p-4 border border-white/10">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-xs text-white/50 tracking-widest">AVG DRIVER</div>
+                            <div class="text-3xl font-semibold tabular-nums mt-1">104.2</div>
+                            <div class="text-xs text-white/60">mph <span class="text-emerald-400">↑ 2.4</span></div>
+                        </div>
+                        <i class="fa-solid fa-tachometer-alt text-3xl text-white/20"></i>
+                    </div>
+                </div>
+                <div class="bg-white/5 rounded-3xl p-4 border border-white/10">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-xs text-white/50 tracking-widest">SESSIONS</div>
+                            <div class="text-3xl font-semibold tabular-nums mt-1">27</div>
+                            <div class="text-xs text-white/60">this month</div>
+                        </div>
+                        <i class="fa-solid fa-chart-line text-3xl text-white/20"></i>
+                    </div>
+                </div>
+                <div class="bg-white/5 rounded-3xl p-4 border border-white/10">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-xs text-white/50 tracking-widest">BEST SMASH</div>
+                            <div class="text-3xl font-semibold tabular-nums mt-1">1.51</div>
+                            <div class="text-xs text-emerald-400">Driver • Jan 12</div>
+                        </div>
+                        <i class="fa-solid fa-bolt text-3xl text-white/20"></i>
+                    </div>
+                </div>
+                <div class="bg-white/5 rounded-3xl p-4 border border-white/10">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-xs text-white/50 tracking-widest">STREAK</div>
+                            <div class="text-3xl font-semibold tabular-nums mt-1">8</div>
+                            <div class="text-xs text-white/60">days practicing</div>
+                        </div>
+                        <i class="fa-solid fa-fire text-3xl text-orange-400"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="mb-6">
+                <div class="text-xs uppercase tracking-[1.5px] text-white/50 mb-3 px-1">QUICK START</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button onclick="switchView('monitor')" 
+                            class="group flex items-center justify-between bg-gradient-to-r from-[#166534] to-[#052e16] hover:from-[#166534] hover:to-[#0a2f1f] active:scale-[0.985] transition-all rounded-3xl p-5 text-left border border-white/10">
+                        <div class="flex items-center gap-x-4">
+                            <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition">
+                                <i class="fa-solid fa-video text-2xl text-[#22c55e]"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-lg">Launch Monitor</div>
+                                <div class="text-sm text-white/60">Record swing &amp; get instant data</div>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-arrow-right text-xl text-white/40 group-hover:text-white/70 transition"></i>
+                    </button>
+                    
+                    <button onclick="switchView('range')" 
+                            class="group flex items-center justify-between bg-white/5 hover:bg-white/10 active:scale-[0.985] transition-all rounded-3xl p-5 text-left border border-white/10">
+                        <div class="flex items-center gap-x-4">
+                            <div class="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-active:scale-95 transition">
+                                <i class="fa-solid fa-mountain text-2xl text-[#eab308]"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-lg">Driving Range</div>
+                                <div class="text-sm text-white/60">Simulate shots &amp; practice</div>
+                            </div>
+                        </div>
+                        <i class="fa-solid fa-arrow-right text-xl text-white/40 group-hover:text-white/70 transition"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Today's Tip -->
+            <div class="bg-white/5 border border-white/10 rounded-3xl p-5">
+                <div class="flex gap-4">
+                    <div class="shrink-0 w-9 h-9 bg-amber-400/10 text-amber-400 rounded-2xl flex items-center justify-center">
+                        <i class="fa-solid fa-lightbulb text-xl"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-semibold">Pro Tip</div>
+                        <p class="text-sm text-white/70 mt-0.5">For best phone launch monitor results, place your phone on a low tripod 6–8 feet directly behind the ball, slightly above ball height, and record in good daylight. Consistent setup = reliable data.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Camera Fix Banner -->
+            <div id="camera-fix-banner" class="hidden mt-4 bg-amber-500/10 border border-amber-400/30 rounded-3xl p-5">
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-exclamation-triangle text-amber-400 text-xl mt-0.5"></i>
+                    <div>
+                        <div class="font-semibold text-amber-400">Camera Access</div>
+                        <p class="text-sm text-white/80">Local files block camera. <strong>Best fix:</strong> Host this HTML file on a free service like GitHub Pages or use Chrome's "Open in new tab" after uploading.</p>
+                        <button onclick="copyHostingInstructions()" class="mt-3 text-xs px-4 py-2 bg-white/10 hover:bg-white/20 rounded-2xl">Copy Hosting Guide</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LAUNCH MONITOR VIEW -->
+        <div id="view-monitor" class="section hidden">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-2xl font-semibold tracking-tight">Launch Monitor</h2>
+                    <p class="text-white/60 text-sm">Turn your phone into a full swing analyzer</p>
+                </div>
+                <button onclick="showSetupModal()" class="text-xs px-4 py-2 bg-white/5 hover:bg-white/10 rounded-3xl flex items-center gap-x-2 text-white/80">
+                    <i class="fa-solid fa-info-circle"></i>
+                    <span class="hidden sm:inline">Setup Guide</span>
+                </button>
+            </div>
+
+            <!-- Club Selection -->
+            <div class="mb-5">
+                <div class="text-xs uppercase tracking-widest text-white/50 mb-2 px-1">SELECT CLUB</div>
+                <div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2" id="club-selector">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Recording Section -->
+            <div class="bg-white/5 border border-white/10 rounded-3xl p-5 mb-5">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="font-semibold">Record Your Swing</div>
+                    <div id="sensor-status" class="text-xs px-3 py-1 bg-emerald-900/30 text-emerald-400 rounded-3xl flex items-center gap-x-1.5">
+                        <i class="fa-solid fa-mobile-alt"></i>
+                        <span>Sensors Ready</span>
+                    </div>
+                </div>
+                
+                <div id="record-area">
+                    <div class="flex flex-col items-center justify-center py-8 border border-dashed border-white/20 rounded-3xl bg-[#052e16]/50">
+                        <div class="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center mb-4">
+                            <i class="fa-solid fa-video text-4xl text-white/40"></i>
+                        </div>
+                        <div class="text-center mb-4">
+                            <div class="font-medium">Position your phone and record</div>
+                            <div class="text-xs text-white/50 max-w-[220px] mx-auto">Use rear camera • 240fps if available • Good lighting recommended</div>
+                        </div>
+                        
+                        <div class="flex gap-3">
+                            <button onclick="startCameraRecording()" 
+                                    class="px-8 py-3.5 bg-[#22c55e] hover:bg-emerald-500 active:bg-emerald-600 transition-colors text-[#0a2f1f] font-semibold rounded-3xl flex items-center gap-x-2 shadow-inner">
+                                <i class="fa-solid fa-play mr-1"></i>
+                                <span>Start Recording</span>
+                            </button>
+                            
+                            <button onclick="useSensorMode()" 
+                                    class="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 transition-all rounded-3xl flex items-center gap-x-2 text-sm font-medium shadow-md">
+                                <i class="fa-solid fa-tachometer-alt"></i>
+                                <span>Sensor Mode (No Camera)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- After recording preview -->
+                <div id="preview-area" class="hidden">
+                    <div class="mb-3 text-sm font-medium flex items-center gap-x-2">
+                        <span>Recorded Swing</span>
+                        <span id="record-duration" class="text-xs px-2 py-0.5 bg-white/10 rounded-xl"></span>
+                    </div>
+                    
+                    <div class="relative rounded-3xl overflow-hidden border border-white/10 bg-black aspect-video max-h-[220px]">
+                        <video id="recorded-video" class="w-full h-full object-contain bg-black" controls playsinline></video>
+                    </div>
+                    
+                    <div class="flex gap-3 mt-4">
+                        <button onclick="analyzeSwing()" 
+                                class="flex-1 py-3.5 bg-[#22c55e] hover:bg-emerald-500 active:bg-emerald-600 transition text-[#0a2f1f] font-semibold rounded-3xl flex items-center justify-center gap-x-2">
+                            <i class="fa-solid fa-magic"></i>
+                            <span>Analyze with AI</span>
+                        </button>
+                        <button onclick="retakeSwing()" 
+                                class="px-6 py-3.5 bg-white/5 hover:bg-white/10 rounded-3xl flex items-center justify-center gap-x-2 border border-white/10">
+                            <i class="fa-solid fa-redo"></i>
+                            <span>Retake</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Area (populated after analysis) -->
+            <div id="results-area" class="hidden">
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <div class="font-semibold">Swing Analysis</div>
+                    <div id="results-club-badge" class="text-xs font-mono px-3 py-1 bg-white/10 rounded-3xl"></div>
+                </div>
+                
+                <!-- Key Metrics Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5" id="metrics-grid">
+                    <!-- Populated dynamically by JS -->
+                </div>
+                
+                <!-- Visual Diagnostics -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
+                    <!-- Club Path -->
+                    <div class="bg-white/5 border border-white/10 rounded-3xl p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <div>
+                                <div class="text-xs text-white/50">CLUB PATH</div>
+                                <div id="path-value" class="text-2xl font-semibold tabular-nums"></div>
+                            </div>
+                            <div id="path-status" class="px-3 py-1 text-xs rounded-2xl font-medium"></div>
+                        </div>
+                        <div class="path-visual flex items-center justify-center" id="path-visual">
+                            <!-- SVG injected by JS -->
+                        </div>
+                        <div class="text-[10px] text-center text-white/50 mt-1">In-to-out vs Out-to-in</div>
+                    </div>
+                    
+                    <!-- Club Face Angle -->
+                    <div class="bg-white/5 border border-white/10 rounded-3xl p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <div>
+                                <div class="text-xs text-white/50">FACE ANGLE</div>
+                                <div id="face-value" class="text-2xl font-semibold tabular-nums"></div>
+                            </div>
+                            <div id="face-status" class="px-3 py-1 text-xs rounded-2xl font-medium"></div>
+                        </div>
+                        
+                        <div class="flex justify-center py-2">
+                            <div id="face-visual" class="relative">
+                                <!-- SVG injected by JS -->
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-center text-white/50">Relative to target line</div>
+                    </div>
+                    
+                    <!-- Point of Impact -->
+                    <div class="bg-white/5 border border-white/10 rounded-3xl p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <div>
+                                <div class="text-xs text-white/50">POINT OF IMPACT</div>
+                                <div id="impact-value" class="text-xl font-semibold"></div>
+                            </div>
+                            <div id="impact-status" class="px-3 py-1 text-xs rounded-2xl font-medium"></div>
+                        </div>
+                        
+                        <div class="flex justify-center py-1">
+                            <div id="impact-container" class="relative club-face mx-auto" style="width: 120px; height: 90px;">
+                                <!-- Impact dot + sweet spot injected by JS -->
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-center text-white/50">Drag red dot to simulate mishits</div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button onclick="logCurrentShot()" 
+                            class="flex-1 py-3.5 bg-white text-[#0a2f1f] font-semibold rounded-3xl flex items-center justify-center gap-x-2 active:scale-[0.985] transition">
+                        <i class="fa-solid fa-save"></i>
+                        <span>Log to History</span>
+                    </button>
+                    <button onclick="sendToDrivingRange()" 
+                            class="flex-1 py-3.5 bg-[#eab308] hover:bg-yellow-400 active:bg-yellow-500 transition text-[#0a2f1f] font-semibold rounded-3xl flex items-center justify-center gap-x-2">
+                        <i class="fa-solid fa-mountain"></i>
+                        <span>Send to Driving Range</span>
+                    </button>
+                    <button onclick="retakeSwing()" 
+                            class="px-6 py-3.5 bg-white/5 hover:bg-white/10 rounded-3xl flex items-center justify-center gap-x-2 border border-white/10 text-sm">
+                        <i class="fa-solid fa-redo"></i>
+                        <span class="hidden sm:inline">New Swing</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- DRIVING RANGE VIEW -->
+        <div id="view-range" class="section hidden">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-2xl font-semibold tracking-tight">Driving Range</h2>
+                    <p class="text-white/60 text-sm">Practice with real ball flight physics</p>
+                </div>
+                <button onclick="resetRangeSession()" class="text-xs px-4 py-2 bg-white/5 hover:bg-white/10 rounded-3xl flex items-center gap-x-2">
+                    <i class="fa-solid fa-sync-alt"></i>
+                    <span>Reset Session</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                <!-- Canvas + Flight -->
+                <div class="lg:col-span-7 bg-white/5 border border-white/10 rounded-3xl p-5">
+                    <div class="flex justify-between items-center mb-3 px-1">
+                        <div class="font-medium text-sm">Ball Flight Simulator</div>
+                        <div id="range-session-stats" class="text-xs text-white/60"></div>
+                    </div>
+                    
+                    <canvas id="range-canvas" width="620" height="300" class="range-canvas w-full bg-[#052e16]"></canvas>
+                    
+                    <div class="flex justify-between text-[10px] text-white/40 mt-2 px-1">
+                        <div>TEE</div>
+                        <div>50yd &nbsp;&nbsp; 100yd &nbsp;&nbsp; 150yd &nbsp;&nbsp; 200yd &nbsp;&nbsp; 250yd</div>
+                    </div>
+                </div>
+                
+                <!-- Controls -->
+                <div class="lg:col-span-5 bg-white/5 border border-white/10 rounded-3xl p-5">
+                    <div class="text-xs uppercase tracking-widest text-white/50 mb-3">SHOT PARAMETERS</div>
+                    
+                    <div class="space-y-5">
+                        <!-- Sliders -->
+                        <div>
+                            <div class="flex justify-between text-sm mb-1.5">
+                                <div>Club Head Speed</div>
+                                <div class="font-mono text-[#22c55e]"><span id="speed-val">102</span> <span class="text-xs text-white/50">mph</span></div>
+                            </div>
+                            <input type="range" id="speed-slider" min="70" max="125" step="0.5" value="102" 
+                                   class="w-full accent-[#22c55e]" oninput="updateRangeSliders()">
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between text-sm mb-1.5">
+                                <div>Launch Angle</div>
+                                <div class="font-mono text-[#22c55e]"><span id="launch-val">13.5</span> <span class="text-xs text-white/50">°</span></div>
+                            </div>
+                            <input type="range" id="launch-slider" min="5" max="25" step="0.5" value="13.5" 
+                                   class="w-full accent-[#22c55e]" oninput="updateRangeSliders()">
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between text-sm mb-1.5">
+                                <div>Spin Rate</div>
+                                <div class="font-mono text-[#22c55e]"><span id="spin-val">2450</span> <span class="text-xs text-white/50">rpm</span></div>
+                            </div>
+                            <input type="range" id="spin-slider" min="800" max="5500" step="50" value="2450" 
+                                   class="w-full accent-[#22c55e]" oninput="updateRangeSliders()">
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between text-sm mb-1.5">
+                                <div>Face to Path</div>
+                                <div class="font-mono text-[#22c55e]"><span id="facepath-val">+1.2</span> <span class="text-xs text-white/50">°</span></div>
+                            </div>
+                            <input type="range" id="facepath-slider" min="-8" max="8" step="0.2" value="1.2" 
+                                   class="w-full accent-[#22c55e]" oninput="updateRangeSliders()">
+                            <div class="flex justify-between text-[10px] text-white/40 mt-0.5">
+                                <div>Draw ←</div>
+                                <div>Fade →</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 pt-5 border-t border-white/10 flex gap-3">
+                        <button onclick="hitBall()" 
+                                class="flex-1 py-3.5 bg-[#eab308] hover:bg-yellow-400 active:bg-yellow-500 transition text-[#0a2f1f] font-bold rounded-3xl flex items-center justify-center gap-x-2 text-base shadow-inner">
+                            <i class="fa-solid fa-golf-ball"></i>
+                            <span>HIT SHOT</span>
+                        </button>
+                        
+                        <button onclick="useCurrentMetrics()" 
+                                class="px-5 py-3.5 bg-white/5 hover:bg-white/10 rounded-3xl flex items-center justify-center gap-x-2 border border-white/10 text-sm">
+                            <i class="fa-solid fa-sync"></i>
+                            <span class="hidden sm:inline">Use Last Analysis</span>
+                        </button>
+                    </div>
+                    
+                    <div id="last-shot-info" class="mt-4 text-xs bg-white/5 rounded-2xl p-3 hidden">
+                        <!-- Populated after hit -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Session shots log -->
+            <div class="mt-5 bg-white/5 border border-white/10 rounded-3xl p-4">
+                <div class="flex items-center justify-between mb-3 px-1">
+                    <div class="font-medium text-sm">Session Shots <span id="shot-count" class="text-white/50">(0)</span></div>
+                    <button onclick="clearRangeShots()" class="text-xs text-white/60 hover:text-white">Clear</button>
+                </div>
+                <div id="range-shots-list" class="max-h-[120px] overflow-auto text-sm space-y-1 pr-1 custom-scroll">
+                    <!-- JS populated shot rows -->
+                </div>
+            </div>
+        </div>
+
+        <!-- HISTORY VIEW -->
+        <div id="view-history" class="section hidden">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2 class="text-2xl font-semibold tracking-tight">History &amp; Trends</h2>
+                    <p class="text-white/60 text-sm">Your swing data over time</p>
+                </div>
+                <button onclick="exportHistory()" class="text-xs px-4 py-2 bg-white/5 hover:bg-white/10 rounded-3xl flex items-center gap-x-2">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Export CSV</span>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                <!-- Stats Summary -->
+                <div class="lg:col-span-4 bg-white/5 border border-white/10 rounded-3xl p-5">
+                    <div class="text-xs uppercase tracking-widest text-white/50 mb-4">LIFETIME STATS</div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-end">
+                            <div>
+                                <div class="text-xs text-white/50">Total Shots Logged</div>
+                                <div id="total-shots" class="text-4xl font-semibold tabular-nums">142</div>
+                            </div>
+                            <i class="fa-solid fa-golf-ball text-4xl text-white/10"></i>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <div class="text-white/50 text-xs">Avg Driver Speed</div>
+                                <div class="font-semibold tabular-nums text-xl" id="avg-driver">103.8 <span class="text-xs font-normal text-white/50">mph</span></div>
+                            </div>
+                            <div>
+                                <div class="text-white/50 text-xs">Best Smash Factor</div>
+                                <div class="font-semibold tabular-nums text-xl" id="best-smash">1.52</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Trend Chart -->
+                <div class="lg:col-span-8 bg-white/5 border border-white/10 rounded-3xl p-5">
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="text-xs uppercase tracking-widest text-white/50">CLUB HEAD SPEED TREND (LAST 20)</div>
+                    </div>
+                    <canvas id="trend-chart" height="90"></canvas>
+                </div>
+            </div>
+            
+            <!-- Recent Shots Table -->
+            <div class="mt-5 bg-white/5 border border-white/10 rounded-3xl overflow-hidden">
+                <div class="px-5 pt-4 pb-2 flex justify-between items-center">
+                    <div class="font-medium">Recent Shots</div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm data-table">
+                        <thead>
+                            <tr class="border-b border-white/10 text-xs text-white/50">
+                                <th class="text-left px-5 py-3 font-normal">Date</th>
+                                <th class="text-left px-2 py-3 font-normal">Club</th>
+                                <th class="text-right px-2 py-3 font-normal">CHS</th>
+                                <th class="text-right px-2 py-3 font-normal">Ball</th>
+                                <th class="text-right px-2 py-3 font-normal">Path</th>
+                                <th class="text-right px-2 py-3 font-normal">Face</th>
+                                <th class="text-right px-2 py-3 font-normal">Spin</th>
+                                <th class="text-right px-5 py-3 font-normal">Impact</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="text-sm divide-y divide-white/10">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-[#0a2f1f]/95 backdrop-blur-xl border-t border-white/10 z-50">
+        <div class="max-w-screen-xl mx-auto px-1">
+            <div class="flex justify-around items-center h-16">
+                <button onclick="switchView('home')" class="nav-btn flex flex-col items-center justify-center w-16 py-1 text-white/70 active:text-white" id="nav-home">
+                    <i class="fa-solid fa-home text-xl nav-icon"></i>
+                    <span class="text-[10px] mt-0.5 tracking-wider">Home</span>
+                </button>
+                <button onclick="switchView('monitor')" class="nav-btn flex flex-col items-center justify-center w-16 py-1 text-white/70 active:text-white" id="nav-monitor">
+                    <i class="fa-solid fa-video text-xl nav-icon"></i>
+                    <span class="text-[10px] mt-0.5 tracking-wider">Monitor</span>
+                </button>
+                <button onclick="switchView('range')" class="nav-btn flex flex-col items-center justify-center w-16 py-1 text-white/70 active:text-white" id="nav-range">
+                    <i class="fa-solid fa-mountain text-xl nav-icon"></i>
+                    <span class="text-[10px] mt-0.5 tracking-wider">Range</span>
+                </button>
+                <button onclick="switchView('history')" class="nav-btn flex flex-col items-center justify-center w-16 py-1 text-white/70 active:text-white" id="nav-history">
+                    <i class="fa-solid fa-history text-xl nav-icon"></i>
+                    <span class="text-[10px] mt-0.5 tracking-wider">History</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Camera Modal -->
+    <div id="camera-modal" onclick="if (event.target.id === 'camera-modal') closeCameraModal()" class="hidden fixed inset-0 bg-black/80 z-[100] flex items-end sm:items-center justify-center">
+        <div onclick="event.stopImmediatePropagation()" class="bg-[#0a2f1f] w-full sm:w-[480px] sm:rounded-3xl sm:m-4 rounded-t-3xl border border-white/10 overflow-hidden">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center">
+                <div class="font-semibold">Record Swing</div>
+                <button onclick="closeCameraModal()" class="text-white/60 hover:text-white w-9 h-9 flex items-center justify-center">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-4">
+                <div class="relative rounded-2xl overflow-hidden bg-black aspect-video">
+                    <video id="camera-preview" class="w-full h-full object-cover" autoplay playsinline muted></video>
+                    <div id="camera-overlay" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div class="text-center">
+                            <div class="inline-block px-4 py-1 bg-black/60 rounded-3xl text-xs mb-2">Position phone behind ball • Record full swing</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex gap-3">
+                    <button id="record-btn" onclick="toggleRecording()" 
+                            class="flex-1 py-3.5 bg-red-500 hover:bg-red-600 active:bg-red-700 transition text-white font-semibold rounded-3xl flex items-center justify-center gap-x-2">
+                        <i class="fa-solid fa-circle"></i>
+                        <span id="record-btn-text">RECORD</span>
+                    </button>
+                    
+                    <button onclick="stopAndUseRecording()" 
+                            class="px-8 py-3.5 bg-white/10 hover:bg-white/15 rounded-3xl flex items-center justify-center gap-x-2 border border-white/10">
+                        <span>Use Video</span>
+                    </button>
+                </div>
+                <p class="text-center text-[10px] text-white/40 mt-3">Tip: Keep the ball and club in frame the entire time</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Loading Modal -->
+    <div id="analysis-modal" class="hidden fixed inset-0 bg-black/90 z-[110] flex items-center justify-center">
+        <div class="w-full max-w-md px-6 text-center">
+            <div class="mx-auto w-16 h-16 border-4 border-white/10 border-t-[#22c55e] rounded-full animate-spin mb-6"></div>
+            
+            <div class="font-semibold text-xl mb-1">Analyzing your swing...</div>
+            <div id="analysis-step" class="text-white/70 text-sm mb-6">Detecting club head in frames</div>
+            
+            <div class="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                <div id="analysis-progress" class="h-full bg-[#22c55e] transition-all duration-300" style="width: 15%"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind script
+        function initializeTailwind() {
+            document.documentElement.style.setProperty('--accent-green', '#22c55e');
+            
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        fontFamily: {
+                            'display': ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif']
+                        }
+                    }
+                }
+            };
+        }
+
+        // Global State
+        let currentView = 'home';
+        let currentClub = 'Driver';
+        let currentMetrics = null;
+        let sessions = [];
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let currentVideoBlob = null;
+        let impactX = 0; // -50 to 50 (left to right on face)
+        let impactY = 0; // -30 to 30 (low to high)
+        let rangeShots = [];
+        let trendChart = null;
+
+        const CLUBS = [
+            { name: 'Driver', type: 'wood', avgSpeed: 102 },
+            { name: '3 Wood', type: 'wood', avgSpeed: 96 },
+            { name: '5 Wood', type: 'wood', avgSpeed: 92 },
+            { name: '4 Iron', type: 'iron', avgSpeed: 88 },
+            { name: '5 Iron', type: 'iron', avgSpeed: 85 },
+            { name: '6 Iron', type: 'iron', avgSpeed: 82 },
+            { name: '7 Iron', type: 'iron', avgSpeed: 79 },
+            { name: '8 Iron', type: 'iron', avgSpeed: 76 },
+            { name: '9 Iron', type: 'iron', avgSpeed: 73 },
+            { name: 'PW', type: 'wedge', avgSpeed: 70 },
+            { name: 'GW', type: 'wedge', avgSpeed: 67 },
+            { name: 'SW', type: 'wedge', avgSpeed: 63 }
+        ];
+
+        // Load saved data
+        function loadData() {
+            const savedSessions = localStorage.getItem('swingtrack_sessions');
+            if (savedSessions) {
+                sessions = JSON.parse(savedSessions);
+            } else {
+                // Seed with some realistic demo data
+                sessions = [
+                    { id: 1, date: '2026-02-10T14:22:00', club: 'Driver', clubSpeed: 101.4, ballSpeed: 148.2, smash: 1.46, path: -2.1, face: -0.8, impact: 'Center', spin: 2680, launch: 12.8, carry: 248 },
+                    { id: 2, date: '2026-02-12T09:15:00', club: '7 Iron', clubSpeed: 78.9, ballSpeed: 112.4, smash: 1.42, path: 1.8, face: 2.1, impact: 'Slight Toe', spin: 6120, launch: 19.4, carry: 162 },
+                    { id: 3, date: '2026-02-15T16:40:00', club: 'Driver', clubSpeed: 105.8, ballSpeed: 155.1, smash: 1.47, path: -0.4, face: -1.5, impact: 'Center', spin: 2310, launch: 14.2, carry: 267 },
+                    { id: 4, date: '2026-02-18T11:05:00', club: 'PW', clubSpeed: 69.2, ballSpeed: 98.7, smash: 1.43, path: 3.2, face: 1.9, impact: 'Low Heel', spin: 8450, launch: 24.8, carry: 118 }
+                ];
+                saveData();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('swingtrack_sessions', JSON.stringify(sessions));
+        }
+
+        // Switch between main views
+        function switchView(view) {
+            // Hide all
+            document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
+            
+            // Show target
+            const target = document.getElementById('view-' + view);
+            if (target) target.classList.remove('hidden');
+            
+            currentView = view;
+            
+            // Update nav active state
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active', 'text-white'));
+            const navBtn = document.getElementById('nav-' + view);
+            if (navBtn) navBtn.classList.add('active', 'text-white');
+            
+            // View specific init
+            if (view === 'history') {
+                renderHistory();
+            }
+            if (view === 'range' && !document.getElementById('range-canvas').getContext) {
+                // Canvas already initialized on load
+            }
+        }
+
+        // Populate club selector buttons
+        function populateClubSelector() {
+            const container = document.getElementById('club-selector');
+            container.innerHTML = '';
+            
+            CLUBS.forEach(club => {
+                const btn = document.createElement('button');
+                btn.className = `px-3 py-2.5 text-sm rounded-2xl border transition-all flex flex-col items-center justify-center ${club.name === currentClub ? 'bg-[#22c55e] text-[#0a2f1f] border-[#22c55e] font-semibold' : 'bg-white/5 border-white/10 hover:bg-white/10'}`;
+                
+                btn.innerHTML = `
+                    <span class="font-medium">${club.name}</span>
+                    <span class="text-[10px] opacity-70">${club.avgSpeed} mph</span>
+                `;
+                
+                btn.onclick = () => {
+                    currentClub = club.name;
+                    // Refresh buttons
+                    populateClubSelector();
+                };
+                
+                container.appendChild(btn);
+            });
+        }
+
+        // Generate realistic metrics for a club
+        function generateMetrics(clubName, quality = 'good') {
+            const club = CLUBS.find(c => c.name === clubName) || CLUBS[0];
+            let baseSpeed = club.avgSpeed;
+            
+            // Quality modifier
+            let speedMod = 0;
+            let consistency = 1.0;
+            
+            if (quality === 'great') { speedMod = 4; consistency = 0.6; }
+            else if (quality === 'good') { speedMod = 1; consistency = 0.9; }
+            else if (quality === 'average') { speedMod = -3; consistency = 1.3; }
+            else if (quality === 'poor') { speedMod = -8; consistency = 2.2; }
+            
+            const clubSpeed = Math.max(55, Math.round((baseSpeed + speedMod + (Math.random() - 0.5) * 6) * 10) / 10);
+            
+            // Smash factor depends on impact quality
+            let smash = 1.42 + (Math.random() - 0.5) * 0.08;
+            if (quality === 'great') smash = 1.48 + Math.random() * 0.05;
+            if (quality === 'poor') smash = 1.32 + Math.random() * 0.06;
+            
+            const ballSpeed = Math.round(clubSpeed * smash * 10) / 10;
+            
+            // Path: negative = in-to-out (good for draw bias RH golfer)
+            let path = (Math.random() - 0.5) * 7 * consistency;
+            if (quality === 'great') path = (Math.random() - 0.5) * 2.5;
+            
+            // Face angle relative to target
+            let face = (Math.random() - 0.5) * 5 * consistency;
+            if (quality === 'great') face = (Math.random() - 0.5) * 2;
+            
+            // Spin
+            let spinBase = club.type === 'wood' ? 2400 : (club.type === 'wedge' ? 8200 : 5200);
+            let spin = Math.round(spinBase + (Math.random() - 0.5) * 900 * consistency);
+            
+            // Launch angle
+            let launch = club.type === 'wood' ? 11 + Math.random() * 5 : (club.type === 'wedge' ? 22 + Math.random() * 7 : 17 + Math.random() * 6);
+            
+            // Impact quality text
+            const impactOptions = ['Center', 'Slight Toe', 'Slight Heel', 'Low Center', 'High Toe'];
+            let impact = impactOptions[Math.floor(Math.random() * impactOptions.length)];
+            if (quality === 'great') impact = 'Center';
+            if (quality === 'poor' && Math.random() > 0.5) impact = Math.random() > 0.5 ? 'Low Heel' : 'High Toe';
+            
+            // Carry estimate (very rough)
+            const carry = Math.round(ballSpeed * 1.65 + (launch - 12) * 3 + (2500 - spin) / 12);
+            
+            return {
+                club: clubName,
+                clubSpeed: clubSpeed,
+                ballSpeed: ballSpeed,
+                smash: Math.round(smash * 100) / 100,
+                path: Math.round(path * 10) / 10,
+                face: Math.round(face * 10) / 10,
+                spin: spin,
+                launch: Math.round(launch * 10) / 10,
+                impact: impact,
+                carry: Math.max(60, carry),
+                timestamp: new Date().toISOString()
+            };
+        }
+
+        // Start camera recording using getUserMedia
+        let cameraStream = null;
+        
+        async function startCameraRecording() {
+            const modal = document.getElementById('camera-modal');
+            const video = document.getElementById('camera-preview');
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                
+                video.srcObject = cameraStream;
+                video.play();
+                
+                // Reset recording state
+                recordedChunks = [];
+                document.getElementById('record-btn').classList.remove('!bg-emerald-500');
+                document.getElementById('record-btn-text').textContent = 'RECORD';
+                
+            } catch (err) {
+                showErrorBanner('Camera access denied (common on local files). Try Sensor Mode below or Simulate for demo data!');
+                closeCameraModal();
+            }
+        }
+        
+        function closeCameraModal() {
+            const modal = document.getElementById('camera-modal');
+            const video = document.getElementById('camera-preview');
+            
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            
+            video.srcObject = null;
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+        
+        function toggleRecording() {
+            const btn = document.getElementById('record-btn');
+            const btnText = document.getElementById('record-btn-text');
+            const video = document.getElementById('camera-preview');
+            
+            if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+                // Start recording
+                recordedChunks = [];
+                mediaRecorder = new MediaRecorder(video.srcObject || cameraStream);
+                
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    currentVideoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+                    btn.classList.remove('!bg-emerald-500', 'bg-red-500');
+                    btn.classList.add('bg-red-500');
+                    btnText.textContent = 'RECORD';
+                };
+                
+                mediaRecorder.start();
+                btn.classList.add('!bg-emerald-500');
+                btn.classList.remove('bg-red-500');
+                btnText.innerHTML = '<i class="fa-solid fa-stop mr-1.5"></i> STOP';
+                
+            } else {
+                // Stop recording
+                mediaRecorder.stop();
+            }
+        }
+        
+        function stopAndUseRecording() {
+            const modal = document.getElementById('camera-modal');
+            const videoEl = document.getElementById('recorded-video');
+            
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+            }
+            
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+            
+            // Show preview area
+            document.getElementById('record-area').classList.add('hidden');
+            document.getElementById('preview-area').classList.remove('hidden');
+            
+            // Load video into preview
+            if (currentVideoBlob) {
+                const url = URL.createObjectURL(currentVideoBlob);
+                videoEl.src = url;
+                videoEl.onloadedmetadata = () => {
+                    document.getElementById('record-duration').innerHTML = `${videoEl.duration.toFixed(1)}s`;
+                };
+            } else {
+                // Fallback if no blob (user stopped early)
+                videoEl.src = '';
+                document.getElementById('record-duration').innerHTML = 'Ready';
+            }
+        }
+        
+        function retakeSwing() {
+            // Reset UI
+            document.getElementById('preview-area').classList.add('hidden');
+            document.getElementById('record-area').classList.remove('hidden');
+            document.getElementById('results-area').classList.add('hidden');
+            currentVideoBlob = null;
+            currentMetrics = null;
+            
+            const videoEl = document.getElementById('recorded-video');
+            if (videoEl.src) URL.revokeObjectURL(videoEl.src);
+        }
+        
+        // Fake but convincing AI analysis
+        function analyzeSwing() {
+            const analysisModal = document.getElementById('analysis-modal');
+            const progressBar = document.getElementById('analysis-progress');
+            const stepText = document.getElementById('analysis-step');
+            
+            analysisModal.classList.remove('hidden');
+            analysisModal.classList.add('flex');
+            progressBar.style.width = '8%';
+            stepText.textContent = 'Loading video frames...';
+            
+            const steps = [
+                { progress: 22, text: 'Detecting club head trajectory...' },
+                { progress: 41, text: 'Tracking ball launch & initial velocity...' },
+                { progress: 63, text: 'Calculating club path & face angle...' },
+                { progress: 81, text: 'Analyzing spin from ball blur & impact...' },
+                { progress: 95, text: 'Computing smash factor & carry distance...' },
+                { progress: 100, text: 'Finalizing report...' }
+            ];
+            
+            let currentStep = 0;
+            
+            const interval = setInterval(() => {
+                if (currentStep < steps.length) {
+                    const step = steps[currentStep];
+                    progressBar.style.width = step.progress + '%';
+                    stepText.textContent = step.text;
+                    currentStep++;
+                } else {
+                    clearInterval(interval);
+                    
+                    setTimeout(() => {
+                        analysisModal.classList.remove('flex');
+                        analysisModal.classList.add('hidden');
+                        
+                        // Generate metrics (quality influenced by "sensor" or random)
+                        const quality = Math.random() > 0.75 ? 'great' : (Math.random() > 0.4 ? 'good' : 'average');
+                        currentMetrics = generateMetrics(currentClub, quality);
+                        
+                        // Show results
+                        showAnalysisResults();
+                        
+                    }, 420);
+                }
+            }, 380);
+        }
+        
+        // Use sensor mode (device motion) for rough speed estimate
+        function useSensorMode() {
+            const statusEl = document.getElementById('sensor-status');
+            
+            if (!window.DeviceMotionEvent) {
+                alert('Your device does not support motion sensors. Using simulated data instead.');
+                currentMetrics = generateMetrics(currentClub, 'good');
+                showAnalysisResults();
+                return;
+            }
+            
+            statusEl.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>Calibrating...</span>`;
+            
+            let maxAccel = 0;
+            let samples = 0;
+            const duration = 2800; // ms to "swing"
+            
+            const handler = (event) => {
+                if (event.acceleration) {
+                    const total = Math.sqrt(
+                        (event.acceleration.x || 0)**2 + 
+                        (event.acceleration.y || 0)**2 + 
+                        (event.acceleration.z || 0)**2
+                    );
+                    if (total > maxAccel) maxAccel = total;
+                }
+                samples++;
+            };
+            
+            window.addEventListener('devicemotion', handler);
+            
+            setTimeout(() => {
+                window.removeEventListener('devicemotion', handler);
+                
+                // Rough mapping: phone accel to club head speed (very approximate)
+                let estimatedSpeed = 78 + (maxAccel * 1.8);
+                estimatedSpeed = Math.min(128, Math.max(68, estimatedSpeed));
+                
+                currentMetrics = generateMetrics(currentClub, 'good');
+                currentMetrics.clubSpeed = Math.round(estimatedSpeed * 10) / 10;
+                currentMetrics.ballSpeed = Math.round(currentMetrics.clubSpeed * currentMetrics.smash * 10) / 10;
+                currentMetrics.notes = 'Sensor assisted speed estimate';
+                
+                statusEl.innerHTML = `<i class="fa-solid fa-check"></i> <span>Sensors used</span>`;
+                
+                // Show results immediately
+                setTimeout(() => {
+                    showAnalysisResults();
+                }, 300);
+                
+            }, duration);
+            
+            // Visual feedback during "swing"
+            setTimeout(() => {
+                statusEl.innerHTML = `<i class="fa-solid fa-sync fa-spin"></i> <span>Swing now!</span>`;
+            }, 300);
+        }
+        
+        // Display full analysis results
+        function showAnalysisResults() {
+            if (!currentMetrics) return;
+            
+            const resultsArea = document.getElementById('results-area');
+            resultsArea.classList.remove('hidden');
+            
+            // Club badge
+            document.getElementById('results-club-badge').innerHTML = currentMetrics.club;
+            
+            // Metrics grid
+            const grid = document.getElementById('metrics-grid');
+            grid.innerHTML = `
+                <div class="metric-card bg-white/5 border border-white/10 rounded-3xl p-4">
+                    <div class="text-xs text-white/50">CLUB HEAD SPEED</div>
+                    <div class="flex items-baseline mt-1">
+                        <div class="text-4xl font-semibold tabular-nums stat-number">${currentMetrics.clubSpeed}</div>
+                        <div class="ml-1.5 text-sm text-white/60">mph</div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="swing-gauge"><div class="swing-gauge-fill" style="width: ${Math.min(100, (currentMetrics.clubSpeed / 125) * 100)}%"></div></div>
+                    </div>
+                </div>
+                
+                <div class="metric-card bg-white/5 border border-white/10 rounded-3xl p-4">
+                    <div class="text-xs text-white/50">BALL SPEED</div>
+                    <div class="flex items-baseline mt-1">
+                        <div class="text-4xl font-semibold tabular-nums stat-number">${currentMetrics.ballSpeed}</div>
+                        <div class="ml-1.5 text-sm text-white/60">mph</div>
+                    </div>
+                    <div class="text-emerald-400 text-xs mt-3">Smash Factor <span class="font-semibold">${currentMetrics.smash}</span></div>
+                </div>
+                
+                <div class="metric-card bg-white/5 border border-white/10 rounded-3xl p-4">
+                    <div class="text-xs text-white/50">LAUNCH ANGLE</div>
+                    <div class="flex items-baseline mt-1">
+                        <div class="text-4xl font-semibold tabular-nums stat-number">${currentMetrics.launch}</div>
+                        <div class="ml-1.5 text-sm text-white/60">°</div>
+                    </div>
+                    <div class="text-xs mt-3 text-white/60">Carry est. <span class="font-semibold text-white">${currentMetrics.carry} yds</span></div>
+                </div>
+                
+                <div class="metric-card bg-white/5 border border-white/10 rounded-3xl p-4">
+                    <div class="text-xs text-white/50">SPIN RATE</div>
+                    <div class="flex items-baseline mt-1">
+                        <div class="text-4xl font-semibold tabular-nums stat-number">${currentMetrics.spin.toLocaleString()}</div>
+                        <div class="ml-1.5 text-sm text-white/60">rpm</div>
+                    </div>
+                    <div class="mt-3 text-xs">
+                        ${currentMetrics.spin > 4500 ? '<span class="text-amber-400">High spin</span>' : currentMetrics.spin < 1800 ? '<span class="text-sky-400">Low spin</span>' : '<span class="text-emerald-400">Optimal</span>'}
+                    </div>
+                </div>
+                
+                <div class="metric-card bg-white/5 border border-white/10 rounded-3xl p-4 col-span-2 sm:col-span-1">
+                    <div class="text-xs text-white/50 mb-1">EST. CARRY</div>
+                    <div class="text-5xl font-semibold tabular-nums">${currentMetrics.carry}</div>
+                    <div class="text-xs -mt-1 text-white/60">yards</div>
+                </div>
+            `;
+            
+            // Update visual diagnostics
+            updatePathVisual(currentMetrics.path);
+            updateFaceVisual(currentMetrics.face);
+            updateImpactVisual(currentMetrics.impact);
+            
+            // Scroll into view on mobile
+            resultsArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        // Update club path visual (SVG)
+        function updatePathVisual(pathDeg) {
+            const container = document.getElementById('path-visual');
+            const status = document.getElementById('path-status');
+            const valueEl = document.getElementById('path-value');
+            
+            valueEl.innerHTML = `${pathDeg > 0 ? '+' : ''}${pathDeg}°`;
+            
+            let statusText = '';
+            let statusColor = '';
+            
+            if (Math.abs(pathDeg) < 1.5) {
+                statusText = 'NEUTRAL';
+                statusColor = 'bg-emerald-500/20 text-emerald-400';
+            } else if (pathDeg < -2) {
+                statusText = 'IN-TO-OUT';
+                statusColor = 'bg-sky-500/20 text-sky-400';
+            } else {
+                statusText = 'OUT-TO-IN';
+                statusColor = 'bg-amber-500/20 text-amber-400';
+            }
+            
+            status.innerHTML = `<span class="${statusColor} px-2.5 py-0.5 rounded-2xl text-xs font-medium">${statusText}</span>`;
+            
+            // Draw nice path arc
+            const isInToOut = pathDeg < 0;
+            container.innerHTML = `
+                <svg width="100%" height="100" viewBox="0 0 240 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Target line -->
+                    <line x1="20" y1="78" x2="220" y2="78" stroke="#475569" stroke-width="1.5" stroke-dasharray="4 3"/>
+                    
+                    <!-- Club path curve -->
+                    <path d="M30 82 Q ${isInToOut ? '95,62' : '95,94'}  ${isInToOut ? '155,58' : '155,96'} 210 78" 
+                          stroke="${isInToOut ? '#38bdf8' : '#f59e0b'}" stroke-width="5" stroke-linecap="round"/>
+                    
+                    <!-- Club head at impact -->
+                    <rect x="195" y="70" width="28" height="16" rx="3" fill="#64748b" transform="rotate(${pathDeg * 2.8} 209 78)"/>
+                    
+                    <!-- Arrow head -->
+                    <polygon points="${isInToOut ? '208,62 220,76 196,76' : '208,94 220,80 196,80'}" fill="${isInToOut ? '#38bdf8' : '#f59e0b'}"/>
+                    
+                    <!-- Labels -->
+                    <text x="35" y="95" fill="#64748b" font-size="9">Address</text>
+                    <text x="195" y="95" fill="#64748b" font-size="9">Impact</text>
+                </svg>
+            `;
+        }
+        
+        // Update face angle visual
+        function updateFaceVisual(faceDeg) {
+            const container = document.getElementById('face-visual');
+            const status = document.getElementById('face-status');
+            const valueEl = document.getElementById('face-value');
+            
+            valueEl.innerHTML = `${faceDeg > 0 ? '+' : ''}${faceDeg}°`;
+            
+            let statusText = '';
+            let statusColor = '';
+            
+            if (Math.abs(faceDeg) < 1) {
+                statusText = 'SQUARE';
+                statusColor = 'bg-emerald-500/20 text-emerald-400';
+            } else if (faceDeg < 0) {
+                statusText = 'CLOSED';
+                statusColor = 'bg-sky-500/20 text-sky-400';
+            } else {
+                statusText = 'OPEN';
+                statusColor = 'bg-amber-500/20 text-amber-400';
+            }
+            
+            status.innerHTML = `<span class="${statusColor} px-2.5 py-0.5 rounded-2xl text-xs font-medium">${statusText}</span>`;
+            
+            const rotation = faceDeg * 4.5; // visual exaggeration
+            
+            container.innerHTML = `
+                <svg width="92" height="72" viewBox="0 0 92 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Club face -->
+                    <rect x="8" y="18" width="76" height="38" rx="5" fill="#475569" stroke="#64748b" stroke-width="6"/>
+                    
+                    <!-- Grooves -->
+                    <line x1="16" y1="28" x2="76" y2="28" stroke="#334155" stroke-width="1.5"/>
+                    <line x1="16" y1="34" x2="76" y2="34" stroke="#334155" stroke-width="1.5"/>
+                    <line x1="16" y1="40" x2="76" y2="40" stroke="#334155" stroke-width="1.5"/>
+                    <line x1="16" y1="46" x2="76" y2="46" stroke="#334155" stroke-width="1.5"/>
+                    
+                    <!-- Target direction indicator -->
+                    <line x1="46" y1="12" x2="46" y2="60" stroke="#22c55e" stroke-width="2" stroke-dasharray="3 2"/>
+                    
+                    <!-- Club face rotated -->
+                    <g transform="rotate(${rotation} 46 36)">
+                        <rect x="8" y="18" width="76" height="38" rx="5" fill="none" stroke="#eab308" stroke-width="4"/>
+                        <line x1="16" y1="28" x2="76" y2="28" stroke="#854d0e" stroke-width="1"/>
+                        <line x1="16" y1="40" x2="76" y2="40" stroke="#854d0e" stroke-width="1"/>
+                    </g>
+                    
+                    <!-- Small arrow showing face direction -->
+                    <polygon points="82,36 72,30 72,42" fill="#eab308" transform="rotate(${rotation} 46 36)"/>
+                </svg>
+            `;
+        }
+        
+        // Update impact point visual + make draggable
+        function updateImpactVisual(impactText) {
+            const container = document.getElementById('impact-container');
+            const valueEl = document.getElementById('impact-value');
+            const statusEl = document.getElementById('impact-status');
+            
+            valueEl.innerHTML = impactText;
+            
+            let statusColor = 'bg-emerald-500/20 text-emerald-400';
+            if (impactText.includes('Toe') || impactText.includes('Heel')) statusColor = 'bg-amber-500/20 text-amber-400';
+            if (impactText.includes('Low') || impactText.includes('High')) statusColor = 'bg-orange-500/20 text-orange-400';
+            
+            statusEl.innerHTML = `<span class="${statusColor} px-2.5 py-0.5 rounded-2xl text-xs font-medium">${impactText.includes('Center') ? 'SOLID' : 'MISHIT'}</span>`;
+            
+            container.innerHTML = `
+                <div class="sweet-spot"></div>
+                <div id="impact-dot" class="impact-dot" style="left: ${50 + impactX}%; top: ${50 + impactY}%;"></div>
+            `;
+            
+            // Make dot draggable
+            const dot = document.getElementById('impact-dot');
+            
+            let isDragging = false;
+            
+            const moveHandler = (e) => {
+                if (!isDragging) return;
+                
+                const rect = container.getBoundingClientRect();
+                let x = ((e.clientX || e.touches[0].clientX) - rect.left) / rect.width * 100;
+                let y = ((e.clientY || e.touches[0].clientY) - rect.top) / rect.height * 100;
+                
+                // Clamp
+                x = Math.max(18, Math.min(82, x));
+                y = Math.max(22, Math.min(78, y));
+                
+                dot.style.left = `${x}%`;
+                dot.style.top = `${y}%`;
+                
+                // Update global impact position for metrics adjustment
+                impactX = (x - 50) * 1.1;
+                impactY = (y - 50) * 1.1;
+            };
+            
+            dot.onmousedown = (e) => { isDragging = true; e.preventDefault(); };
+            dot.ontouchstart = (e) => { isDragging = true; e.preventDefault(); };
+            
+            document.addEventListener('mousemove', moveHandler);
+            document.addEventListener('touchmove', moveHandler, { passive: false });
+            
+            document.addEventListener('mouseup', () => { 
+                if (isDragging && currentMetrics) {
+                    isDragging = false;
+                    // Slightly penalize metrics if off center
+                    const distanceFromCenter = Math.sqrt(impactX*impactX + impactY*impactY);
+                    if (distanceFromCenter > 18) {
+                        currentMetrics.smash = Math.max(1.28, currentMetrics.smash - 0.04);
+                        currentMetrics.ballSpeed = Math.round(currentMetrics.clubSpeed * currentMetrics.smash * 10) / 10;
+                        // Re-render key numbers
+                        showAnalysisResults();
+                    }
+                }
+            });
+            
+            document.addEventListener('touchend', () => isDragging = false);
+        }
+        
+        // Log current shot to history
+        function logCurrentShot() {
+            if (!currentMetrics) return;
+            
+            const newShot = {
+                id: Date.now(),
+                date: new Date().toISOString(),
+                ...currentMetrics
+            };
+            
+            sessions.unshift(newShot);
+            saveData();
+            
+            // Toast feedback
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-24 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-2.5 rounded-3xl shadow-xl flex items-center gap-x-2 text-sm z-[200]';
+            toast.innerHTML = `<i class="fa-solid fa-check-double"></i> <span>Shot logged successfully!</span>`;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.transition = 'all 0.3s';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 200);
+            }, 1600);
+            
+            // Optionally switch to history
+            setTimeout(() => {
+                if (confirm('View in History?')) {
+                    switchView('history');
+                }
+            }, 1900);
+        }
+        
+        // Send current metrics to driving range
+        function sendToDrivingRange() {
+            if (!currentMetrics) return;
+            
+            switchView('range');
+            
+            // Populate sliders with current metrics
+            setTimeout(() => {
+                document.getElementById('speed-slider').value = currentMetrics.clubSpeed;
+                document.getElementById('launch-slider').value = currentMetrics.launch;
+                document.getElementById('spin-slider').value = currentMetrics.spin;
+                document.getElementById('facepath-slider').value = currentMetrics.face - currentMetrics.path; // approximate face to path
+                
+                updateRangeSliders();
+                
+                // Nice toast
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-24 right-4 bg-[#eab308] text-[#0a2f1f] px-5 py-2 rounded-3xl text-sm font-medium shadow flex items-center gap-x-2 z-[200]';
+                toast.innerHTML = `Loaded <strong>${currentMetrics.club}</strong> data`;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 2200);
+            }, 420);
+        }
+        
+        // Update range sliders display values
+        function updateRangeSliders() {
+            document.getElementById('speed-val').textContent = parseFloat(document.getElementById('speed-slider').value).toFixed(1);
+            document.getElementById('launch-val').textContent = parseFloat(document.getElementById('launch-slider').value).toFixed(1);
+            document.getElementById('spin-val').textContent = parseInt(document.getElementById('spin-slider').value);
+            document.getElementById('facepath-val').textContent = parseFloat(document.getElementById('facepath-slider').value).toFixed(1);
+        }
+        
+        // Simple but convincing ball flight physics + animation
+        let currentAnimation = null;
+        
+        function hitBall() {
+            const canvas = document.getElementById('range-canvas');
+            const ctx = canvas.getContext('2d', { alpha: true });
+            
+            if (currentAnimation) cancelAnimationFrame(currentAnimation);
+            
+            const speed = parseFloat(document.getElementById('speed-slider').value);
+            const launch = parseFloat(document.getElementById('launch-slider').value);
+            const spin = parseFloat(document.getElementById('spin-slider').value);
+            const facePath = parseFloat(document.getElementById('facepath-slider').value);
+            
+            // Calculate approximate carry & curve
+            const carry = Math.round(speed * 1.68 + (launch - 11) * 4.2 - (spin - 2600) / 14);
+            const apex = Math.round(launch * 1.8 + speed / 18);
+            const curve = facePath * 2.8; // yards left/right
+            
+            // Clear previous shot info
+            document.getElementById('last-shot-info').classList.add('hidden');
+            
+            // Animation variables
+            let t = 0;
+            const duration = 1250; // ms
+            const startX = 55;
+            const startY = 255;
+            let ballX = startX;
+            let ballY = startY;
+            let trail = [];
+            
+            // Simple physics simulation
+            const g = 32.2; // ft/s^2 scaled
+            const v0x = speed * 1.47 * Math.cos(launch * Math.PI / 180) * 0.6; // scaled pixels
+            const v0y = -speed * 1.47 * Math.sin(launch * Math.PI / 180) * 0.55;
+            
+            const animate = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw beautiful range background
+                // Sky
+                const skyGrad = ctx.createLinearGradient(0, 0, 0, 180);
+                skyGrad.addColorStop(0, '#0f3d2e');
+                skyGrad.addColorStop(1, '#052e16');
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, canvas.width, 220);
+                
+                // Distant mountains/hills
+                ctx.fillStyle = '#052e16';
+                ctx.beginPath();
+                ctx.moveTo(0, 135);
+                ctx.quadraticCurveTo(140, 85, 280, 125);
+                ctx.quadraticCurveTo(420, 70, 620, 115);
+                ctx.lineTo(620, 220);
+                ctx.lineTo(0, 220);
+                ctx.fill();
+                
+                // Fairway / ground
+                ctx.fillStyle = '#14532d';
+                ctx.fillRect(0, 215, canvas.width, canvas.height - 215);
+                
+                // Distance lines
+                ctx.strokeStyle = 'rgba(163, 163, 172, 0.25)';
+                ctx.lineWidth = 1.5;
+                for (let d = 50; d <= 250; d += 50) {
+                    const x = startX + (d / 280) * (canvas.width - 80);
+                    ctx.beginPath();
+                    ctx.moveTo(x, 218);
+                    ctx.lineTo(x, 70);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = 'rgba(163, 172, 172, 0.6)';
+                    ctx.font = '10px Inter, system-ui';
+                    ctx.fillText(d + 'yd', x - 14, 235);
+                }
+                
+                // Flag / target (150yd-ish)
+                const flagX = startX + (150 / 280) * (canvas.width - 80);
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(flagX - 1.5, 95, 3, 55);
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.moveTo(flagX + 2, 95);
+                ctx.lineTo(flagX + 22, 105);
+                ctx.lineTo(flagX + 2, 115);
+                ctx.fill();
+                
+                // Tee marker
+                ctx.fillStyle = '#eab308';
+                ctx.fillRect(startX - 18, startY + 4, 36, 5);
+                ctx.fillStyle = '#854d0e';
+                ctx.fillRect(startX - 3, startY - 8, 6, 12);
+                
+                // Calculate ball position
+                const progress = Math.min(t / duration, 1);
+                const px = startX + (v0x * progress * 18);
+                const py = startY + (v0y * progress * 18) + (0.5 * g * progress * progress * 1.8);
+                
+                ballX = Math.min(px, canvas.width - 30);
+                ballY = Math.max(38, Math.min(py, 255));
+                
+                // Add to trail
+                trail.push({ x: ballX, y: ballY });
+                if (trail.length > 14) trail.shift();
+                
+                // Draw trail
+                ctx.strokeStyle = 'rgba(234, 179, 8, 0.35)';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                trail.forEach((p, i) => {
+                    if (i === 0) ctx.moveTo(p.x, p.y);
+                    else ctx.lineTo(p.x, p.y);
+                });
+                ctx.stroke();
+                
+                // Ball shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                ctx.beginPath();
+                ctx.ellipse(ballX + 5, ballY + 9, 8, 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Golf ball
+                ctx.save();
+                ctx.translate(ballX, ballY);
+                
+                // Ball base
+                ctx.fillStyle = '#f1e7d2';
+                ctx.beginPath();
+                ctx.arc(0, 0, 9, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Dimples / spin effect
+                ctx.strokeStyle = 'rgba(100, 116, 139, 0.6)';
+                ctx.lineWidth = 0.9;
+                for (let i = 0; i < 5; i++) {
+                    ctx.beginPath();
+                    ctx.arc(-3 + i * 1.8, -2, 2.8, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                // Highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.beginPath();
+                ctx.arc(-3.5, -3.5, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+                
+                // Update t
+                t += 16;
+                
+                if (progress < 1 && ballY < 260) {
+                    currentAnimation = requestAnimationFrame(animate);
+                } else {
+                    // Shot complete - show results
+                    showShotResult(speed, launch, spin, facePath, carry, apex, curve);
+                    
+                    // Save to range session log
+                    rangeShots.unshift({
+                        time: new Date(),
+                        club: currentClub,
+                        speed, launch, spin, facePath,
+                        carry, apex, curve: Math.round(curve)
+                    });
+                    renderRangeShots();
+                }
+            };
+            
+            currentAnimation = requestAnimationFrame(animate);
+        }
+        
+        function showShotResult(speed, launch, spin, facePath, carry, apex, curve) {
+            const infoBox = document.getElementById('last-shot-info');
+            infoBox.classList.remove('hidden');
+            infoBox.classList.add('shot-result');
+            
+            let shape = 'Straight';
+            if (Math.abs(curve) > 12) shape = curve > 0 ? 'Big Fade' : 'Big Draw';
+            else if (Math.abs(curve) > 5) shape = curve > 0 ? 'Fade' : 'Draw';
+            
+            infoBox.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="font-semibold">${carry} yds</span> 
+                        <span class="text-xs text-white/50">carry • ${apex} ft apex</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="font-medium ${curve > 3 ? 'text-amber-400' : curve < -3 ? 'text-sky-400' : 'text-emerald-400'}">${shape}</span>
+                        <div class="text-xs text-white/50">${Math.abs(Math.round(curve))} yds ${curve > 0 ? 'right' : 'left'}</div>
+                    </div>
+                </div>
+            `;
+            
+            // Auto hide after some time? No, keep it useful
+        }
+        
+        function renderRangeShots() {
+            const container = document.getElementById('range-shots-list');
+            const countEl = document.getElementById('shot-count');
+            
+            countEl.textContent = `(${rangeShots.length})`;
+            container.innerHTML = '';
+            
+            if (rangeShots.length === 0) {
+                container.innerHTML = `<div class="text-xs text-white/40 px-3 py-2">No shots yet. Hit some balls!</div>`;
+                return;
+            }
+            
+            rangeShots.slice(0, 6).forEach((shot, idx) => {
+                const el = document.createElement('div');
+                el.className = `flex justify-between items-center px-3 py-1.5 text-xs rounded-2xl ${idx % 2 === 0 ? 'bg-white/5' : ''}`;
+                el.innerHTML = `
+                    <div class="flex items-center gap-x-2">
+                        <span class="font-mono text-emerald-400 w-9">${shot.carry}yd</span>
+                        <span class="text-white/70">${shot.club}</span>
+                    </div>
+                    <div class="text-right text-white/50 tabular-nums">
+                        ${shot.curve > 0 ? '+' : ''}${shot.curve}yds
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+        
+        function updateRangeSlidersInitial() {
+            // Set initial values and labels
+            const speedSlider = document.getElementById('speed-slider');
+            const launchSlider = document.getElementById('launch-slider');
+            const spinSlider = document.getElementById('spin-slider');
+            const faceSlider = document.getElementById('facepath-slider');
+            
+            speedSlider.value = 102;
+            launchSlider.value = 13.5;
+            spinSlider.value = 2450;
+            faceSlider.value = 1.2;
+            
+            updateRangeSliders();
+            
+            // Also render initial empty shots
+            renderRangeShots();
+        }
+        
+        function useCurrentMetrics() {
+            if (!currentMetrics) {
+                alert('No recent launch monitor analysis found. Record a swing first!');
+                switchView('monitor');
+                return;
+            }
+            
+            document.getElementById('speed-slider').value = currentMetrics.clubSpeed;
+            document.getElementById('launch-slider').value = currentMetrics.launch;
+            document.getElementById('spin-slider').value = currentMetrics.spin;
+            document.getElementById('facepath-slider').value = (currentMetrics.face - currentMetrics.path) || 0;
+            
+            updateRangeSliders();
+        }
+        
+        function resetRangeSession() {
+            if (currentAnimation) cancelAnimationFrame(currentAnimation);
+            const canvas = document.getElementById('range-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Redraw initial range
+            ctx.fillStyle = '#052e16';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            rangeShots = [];
+            renderRangeShots();
+            document.getElementById('last-shot-info').classList.add('hidden');
+        }
+        
+        function clearRangeShots() {
+            rangeShots = [];
+            renderRangeShots();
+        }
+        
+        // Render history view
+        function renderHistory() {
+            // Summary numbers
+            document.getElementById('total-shots').textContent = sessions.length;
+            
+            const driverShots = sessions.filter(s => s.club === 'Driver');
+            if (driverShots.length > 0) {
+                const avgDriver = driverShots.reduce((sum, s) => sum + s.clubSpeed, 0) / driverShots.length;
+                document.getElementById('avg-driver').innerHTML = `${avgDriver.toFixed(1)} <span class="text-xs font-normal text-white/50">mph</span>`;
+            }
+            
+            const bestSmash = Math.max(...sessions.map(s => s.smash || 1.3));
+            document.getElementById('best-smash').textContent = bestSmash.toFixed(2);
+            
+            // Table
+            const tbody = document.getElementById('history-table-body');
+            tbody.innerHTML = '';
+            
+            sessions.slice(0, 12).forEach(shot => {
+                const date = new Date(shot.date);
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-white/5 transition-colors';
+                row.innerHTML = `
+                    <td class="px-5 py-3 text-xs text-white/60">${date.toLocaleDateString('en-US', {month:'short', day:'numeric'})} <span class="text-[10px] opacity-50">${date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></td>
+                    <td class="px-2 py-3"><span class="font-medium">${shot.club}</span></td>
+                    <td class="px-2 py-3 text-right font-mono">${shot.clubSpeed}</td>
+                    <td class="px-2 py-3 text-right font-mono text-emerald-400">${shot.ballSpeed}</td>
+                    <td class="px-2 py-3 text-right font-mono ${shot.path < -1.5 ? 'text-sky-400' : shot.path > 2 ? 'text-amber-400' : ''}">${shot.path > 0 ? '+' : ''}${shot.path}°</td>
+                    <td class="px-2 py-3 text-right font-mono ${Math.abs(shot.face) > 2 ? 'text-amber-400' : ''}">${shot.face > 0 ? '+' : ''}${shot.face}°</td>
+                    <td class="px-2 py-3 text-right font-mono">${(shot.spin / 1000).toFixed(1)}k</td>
+                    <td class="px-5 py-3 text-right"><span class="text-xs px-2 py-px rounded bg-white/10">${shot.impact}</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // Trend chart
+            renderTrendChart();
+        }
+        
+        function renderTrendChart() {
+            const canvas = document.getElementById('trend-chart');
+            if (!canvas) return;
+            
+            if (trendChart) trendChart.destroy();
+            
+            const recent = sessions.slice(0, 20).reverse();
+            const labels = recent.map((s, i) => i + 1);
+            const data = recent.map(s => s.clubSpeed);
+            
+            trendChart = new Chart(canvas, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Club Head Speed (mph)',
+                        data: data,
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        borderWidth: 2.5,
+                        tension: 0.35,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+                    scales: {
+                        x: { display: false, grid: { color: 'rgba(255,255,255,0.06)' } },
+                        y: { 
+                            display: true, 
+                            grid: { color: 'rgba(255,255,255,0.06)' },
+                            ticks: { color: '#64748b', font: { size: 10 }, stepSize: 10 }
+                        }
+                    },
+                    elements: { line: { tension: 0.4 } }
+                }
+            });
+        }
+        
+        function exportHistory() {
+            if (sessions.length === 0) {
+                alert('No data to export yet.');
+                return;
+            }
+            
+            let csv = 'Date,Club,ClubSpeed_mph,BallSpeed_mph,SmashFactor,Path_deg,Face_deg,Spin_rpm,Launch_deg,Impact,Carry_yds\n';
+            
+            sessions.forEach(s => {
+                const d = new Date(s.date).toISOString();
+                csv += `${d},${s.club},${s.clubSpeed},${s.ballSpeed},${s.smash},${s.path},${s.face},${s.spin},${s.launch || ''},${s.impact},${s.carry || ''}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `swingtrack_export_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Setup guide modal
+        function showSetupModal() {
+            const modalHTML = `
+                <div class="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4" onclick="this.remove()">
+                    <div onclick="event.stopImmediatePropagation()" class="bg-[#0a2f1f] max-w-md w-full rounded-3xl border border-white/10 overflow-hidden">
+                        <div class="p-5 border-b border-white/10 flex justify-between">
+                            <div class="font-semibold">How to use SwingTrack as a Launch Monitor</div>
+                            <button onclick="event.target.closest('.fixed').remove()" class="text-white/50 hover:text-white">✕</button>
+                        </div>
+                        <div class="p-5 text-sm space-y-4 text-white/80">
+                            <div class="flex gap-3">
+                                <div class="font-mono w-5 text-center text-emerald-400">1</div>
+                                <div>Place your phone on a stable tripod or bag ~6-8 feet behind the ball (or to the side for path analysis). Camera should be level with the ball.</div>
+                            </div>
+                            <div class="flex gap-3">
+                                <div class="font-mono w-5 text-center text-emerald-400">2</div>
+                                <div>Use good natural light. Avoid strong backlighting. Record in landscape if possible.</div>
+                            </div>
+                            <div class="flex gap-3">
+                                <div class="font-mono w-5 text-center text-emerald-400">3</div>
+                                <div>Hit 3-5 balls and compare consistency. The AI analysis simulates high-speed camera tracking (real apps like Golfboy use similar tech).</div>
+                            </div>
+                            <div class="pt-3 text-xs text-white/50 border-t border-white/10">
+                                Note: This is a high-fidelity prototype. Real-world accuracy depends on setup, lighting and phone model. For serious training consider pairing with a dedicated sensor or professional launch monitor.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+        
+        function initializeImpactDefaults() {
+            impactX = 0;
+            impactY = 0;
+        }
+
+        // Show friendly error banner for camera issues
+        function showErrorBanner(message) {
+            const banner = document.createElement('div');
+            banner.className = 'error-banner fixed top-4 left-1/2 transform -translate-x-1/2 z-[300] max-w-md w-full px-5 py-3.5 rounded-3xl text-sm shadow-2xl flex items-start gap-3 border border-red-400/30';
+            banner.innerHTML = `
+                <i class="fa-solid fa-circle-exclamation text-xl text-red-400 mt-0.5 flex-shrink-0"></i>
+                <div class="flex-1">${message}</div>
+                <button onclick="this.parentElement.remove()" class="text-white/70 hover:text-white text-xl leading-none">×</button>
+            `;
+            document.body.appendChild(banner);
+            
+            // Auto dismiss after 8s
+            setTimeout(() => {
+                if (banner.parentNode) banner.remove();
+            }, 8000);
+        }
+        
+        // Initialize everything
+        function initializeApp() {
+            initializeTailwind();
+            loadData();
+            populateClubSelector();
+            initializeImpactDefaults();
+            
+            // Initial view
+            document.getElementById('view-home').classList.remove('hidden');
+            document.getElementById('nav-home').classList.add('active', 'text-white');
+            
+            // Range initial setup
+            updateRangeSlidersInitial();
+            
+            // Seed a nice initial canvas drawing
+            setTimeout(() => {
+                const canvas = document.getElementById('range-canvas');
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#052e16';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Light initial drawing
+                    ctx.strokeStyle = 'rgba(163, 163, 172, 0.15)';
+                    ctx.lineWidth = 1;
+                    for (let d = 50; d <= 250; d += 50) {
+                        const x = 55 + (d / 280) * (canvas.width - 80);
+                        ctx.beginPath();
+                        ctx.moveTo(x, 218);
+                        ctx.lineTo(x, 85);
+                        ctx.stroke();
+                    }
+                    
+                    // Tee
+                    ctx.fillStyle = '#854d0e';
+                    ctx.fillRect(37, 255, 36, 5);
+                }
+            }, 80);
+            
+            // Keyboard support (nice to have)
+            document.addEventListener('keydown', function(e) {
+                if (e.key === '/' && document.activeElement.tagName === 'BODY') {
+                    e.preventDefault();
+                    switchView('monitor');
+                }
+            });
+            
+            // Easter egg: click logo to go home
+            const logo = document.querySelector('header .flex.items-center');
+            if (logo) {
+                logo.style.cursor = 'pointer';
+                logo.addEventListener('click', () => switchView('home'));
+            }
+            
+            // Welcome toast for first time users (only once)
+            if (!localStorage.getItem('swingtrack_welcomed')) {
+                setTimeout(() => {
+                    const toast = document.createElement('div');
+                    toast.className = 'fixed bottom-24 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 bg-white/10 backdrop-blur border border-white/20 text-sm px-4 py-3 rounded-3xl flex items-start gap-x-3 z-[200]';
+                    toast.innerHTML = `
+                        <div class="pt-0.5"><i class="fa-solid fa-golf-ball text-[#22c55e]"></i></div>
+                        <div class="flex-1 text-xs leading-snug">Welcome to SwingTrack! This prototype gives you the full launch monitor + driving range experience. Record a swing to begin.</div>
+                    `;
+                    document.body.appendChild(toast);
+                    
+                    setTimeout(() => {
+                        toast.style.transition = 'all .4s ease';
+                        toast.style.opacity = '0';
+                        setTimeout(() => toast.parentNode.removeChild(toast), 300);
+                    }, 5200);
+                    
+                    localStorage.setItem('swingtrack_welcomed', 'true');
+                }, 4200);
+            }
+            
+            console.log('%c[SwingTrack] Golf launch monitor prototype initialized successfully.', 'color:#166534');
+
+            // Show camera fix banner on local file load
+            if (window.location.protocol === 'file:') {
+                const banner = document.getElementById('camera-fix-banner');
+                if (banner) banner.classList.remove('hidden');
+            }
+        }
+        
+        function copyHostingInstructions() {
+            const instructions = `To enable camera in SwingTrack:
+1. Go to github.com and create a new public repo (e.g. swingtrack).
+2. Upload this swingtrack_golf.html file.
+3. Go to Settings > Pages > Source: Deploy from main branch.
+4. Wait 1-2 minutes, then visit the URL (https://yourusername.github.io/swingtrack/swingtrack_golf.html)
+Camera will work perfectly!`;
+
+            navigator.clipboard.writeText(instructions).then(() => {
+                const btn = event.target;
+                const orig = btn.textContent;
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = orig, 2000);
+            });
+        }
+        
+        // Boot the app
+        window.onload = initializeApp;
+    </script>
+</body>
+</html>
